@@ -1,0 +1,43 @@
+==========================================================
+ CREDENCIALES DE PRUEBA — SISTEMA DE BARBERÍA
+==========================================================
+
+Estas cuentas se crean ejecutando el script de datos demo:
+
+winget install Oven-sh.Bun ---> para instalar bun
+winget install OpenJS.NodeJS.LTS ---> para instalar NodeJS
+
+Terminal 1 Backend
+- cd backend
+- bun install
+- bun run dev
+- bun run seed
+Terminal 2 — frontend
+- cd frontend
+- npm install
+- npm run dev
+
+
+----------------------------------------------------------
+ ADMINISTRADOR
+----------------------------------------------------------
+ Email    : admin@barberia.com
+ Password : Admin123!
+
+----------------------------------------------------------
+ BARBERO 1 (Carlos Martínez)
+----------------------------------------------------------
+ Email    : carlos@barberia.com
+ Password : Barbero123!
+
+----------------------------------------------------------
+ BARBERO 2 (Andrés Gómez)
+----------------------------------------------------------
+ Email    : andres@barberia.com
+ Password : Barbero123!
+
+----------------------------------------------------------
+ CLIENTE (Juan Pérez)
+----------------------------------------------------------
+ Email    : juan@correo.com
+ Password : Cliente123!

@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prototipo Navegable — Sistema de Barbería "Élite"</title>
+<style>
+  /* ============ BASE ============ */
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', system-ui, sans-serif; }
+  body { background:#141210; color:#f5f5f4; min-height:100vh; display:flex; }
+  .panel { width:290px; background:#1c1917; border-right:1px solid #292524; padding:24px 18px; overflow-y:auto; height:100vh; position:sticky; top:0; }
+  .panel h1 { font-size:18px; color:#fbbf24; letter-spacing:.5px; }
+  .panel p.sub { font-size:12px; color:#a8a29e; margin:6px 0 18px; line-height:1.5; }
+  .panel h3 { font-size:11px; text-transform:uppercase; color:#78716c; letter-spacing:1.5px; margin:14px 0 8px; }
+  .nav-btn { display:flex; align-items:center; gap:8px; width:100%; text-align:left; background:transparent; border:1px solid transparent; color:#d6d3d1; padding:9px 12px; border-radius:8px; cursor:pointer; font-size:13px; margin-bottom:4px; transition:.15s; }
+  .nav-btn:hover { background:#292524; }
+  .nav-btn.activo { background:#f59e0b; color:#1c1917; font-weight:600; }
+  .nav-btn .num { font-size:10px; opacity:.7; width:22px; }
+  .nota { margin-top:18px; font-size:11px; color:#78716c; line-height:1.6; border-top:1px solid #292524; padding-top:14px; }
+  .nota b { color:#fbbf24; }
+
+  /* ============ TELÉFONO ============ */
+  .escenario { flex:1; display:flex; align-items:center; justify-content:center; padding:30px 10px; }
+  .telefono { width:390px; height:800px; background:#0c0a09; border:10px solid #292524; border-radius:44px; overflow:hidden; position:relative; box-shadow:0 30px 80px rgba(0,0,0,.6); }
+  .pantalla { display:none; height:100%; overflow-y:auto; scrollbar-width:none; }
+  .pantalla::-webkit-scrollbar { display:none; }
+  .pantalla.visible { display:block; }
+
+  /* ============ COMPONENTES COMPARTIDOS ============ */
+  .topbar { background:#1c1917; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #292524; position:sticky; top:0; z-index:5; }
+  .logo { font-weight:700; font-size:17px; color:#fbbf24; letter-spacing:.5px; display:flex; align-items:center; gap:8px; }
+  .logo::before { content:"✂"; font-size:18px; }
+  .avatar { width:34px; height:34px; border-radius:50%; background:#f59e0b; color:#1c1917; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; }
+  .cuerpo { padding:20px; padding-bottom:90px; }
+  .titulo-pantalla { font-size:22px; font-weight:700; margin-bottom:4px; }
+  .subtitulo { font-size:13px; color:#a8a29e; margin-bottom:18px; }
+  .card { background:#1c1917; border:1px solid #292524; border-radius:14px; padding:16px; margin-bottom:12px; }
+  .card.sel { border-color:#f59e0b; box-shadow:0 0 0 1px #f59e0b; }
+  .card h4 { font-size:15px; }
+  .card .desc { font-size:12px; color:#a8a29e; margin-top:3px; line-height:1.5; }
+  .fila { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .precio { color:#fbbf24; font-weight:700; font-size:15px; white-space:nowrap; }
+  .badge { display:inline-block; font-size:10.5px; font-weight:700; padding:4px 10px; border-radius:999px; letter-spacing:.3px; }
+  .b-pendiente { background:#78350f; color:#fbbf24; }
+  .b-confirmada { background:#1e3a5f; color:#93c5fd; }
+  .b-completada { background:#14532d; color:#86efac; }
+  .b-cancelada { background:#7f1d1d; color:#fca5a5; }
+  .b-rol { background:#292524; color:#d6d3d1; }
+  .btn { display:block; width:100%; background:#f59e0b; color:#1c1917; border:none; border-radius:10px; padding:13px; font-size:14px; font-weight:700; cursor:pointer; text-align:center; }
+  .btn.secundario { background:#292524; color:#e7e5e4; }
+  .btn.peligro { background:#7f1d1d; color:#fca5a5; }
+  .btn.mini { width:auto; padding:8px 14px; font-size:12px; border-radius:8px; display:inline-block; }
+  .btn:disabled { opacity:.4; cursor:not-allowed; }
+  .input { width:100%; background:#0c0a09; border:1px solid #292524; border-radius:10px; padding:12px 14px; color:#f5f5f4; font-size:14px; margin-bottom:12px; outline:none; }
+  .input:focus { border-color:#f59e0b; }
+  .etiqueta { font-size:12px; color:#a8a29e; margin-bottom:6px; display:block; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip { background:#1c1917; border:1px solid #292524; color:#d6d3d1; padding:9px 13px; border-radius:8px; font-size:13px; cursor:pointer; }
+  .chip.sel { background:#f59e0b; color:#1c1917; border-color:#f59e0b; font-weight:700; }
+  .chip.off { opacity:.35; text-decoration:line-through; }
+  .tabbar { position:absolute; bottom:0; left:0; right:0; background:#1c1917; border-top:1px solid #292524; display:flex; padding:10px 6px 18px; }
+  .tabbar a { flex:1; text-align:center; font-size:10.5px; color:#78716c; text-decoration:none; cursor:pointer; }
+  .tabbar a .ico { font-size:19px; display:block; margin-bottom:3px; }
+  .tabbar a.activo { color:#fbbf24; }
+  .estrellas { color:#fbbf24; letter-spacing:2px; font-size:14px; }
+  .pasos { display:flex; gap:6px; margin-bottom:16px; }
+  .paso { flex:1; height:4px; border-radius:2px; background:#292524; }
+  .paso.on { background:#f59e0b; }
+  .stats { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+  .stat { background:#1c1917; border:1px solid #292524; border-radius:14px; padding:14px; }
+  .stat .ico { font-size:18px; }
+  .stat .val { font-size:22px; font-weight:800; color:#fbbf24; margin-top:4px; }
+  .stat .lbl { font-size:11px; color:#a8a29e; }
+  .barra { height:8px; border-radius:4px; background:#292524; overflow:hidden; margin-top:6px; }
+  .barra i { display:block; height:100%; background:#f59e0b; }
+  .tabla { width:100%; font-size:11.5px; border-collapse:collapse; }
+  .tabla th { text-align:left; color:#78716c; font-size:10px; text-transform:uppercase; padding:6px 4px; border-bottom:1px solid #292524; }
+  .tabla td { padding:8px 4px; border-bottom:1px solid #1c1917; }
+  .modal-fondo { display:none; position:absolute; inset:0; background:rgba(0,0,0,.65); z-index:9; align-items:flex-end; }
+  .modal-fondo.abierto { display:flex; }
+  .modal { background:#1c1917; border-radius:20px 20px 0 0; padding:22px; width:100%; }
+  .dia-grupo { margin-bottom:16px; }
+  .dia-grupo h5 { font-size:12px; color:#fbbf24; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
+
+  /* ============ LOGIN / REGISTRO ============ */
+  .auth { min-height:100%; display:flex; flex-direction:column; justify-content:center; padding:34px; background:linear-gradient(160deg,#0c0a09 55%, #1c1310); }
+  .auth .logo-grande { font-size:34px; text-align:center; margin-bottom:6px; }
+  .auth h2 { text-align:center; font-size:24px; color:#fbbf24; letter-spacing:1px; }
+  .auth .frase { text-align:center; font-size:12px; color:#a8a29e; margin-bottom:28px; }
+  .auth .pie { text-align:center; font-size:12.5px; color:#a8a29e; margin-top:18px; }
+  .auth .pie b { color:#fbbf24; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<!-- ================= PANEL DE NAVEGACIÓN ================= -->
+<aside class="panel">
+  <h1>✂ Barbería Élite</h1>
+  <p class="sub">Prototipo navegable del sistema de reservas. Haz clic en cada pantalla para explorar el flujo.</p>
+
+  <h3>Acceso</h3>
+  <button class="nav-btn activo" onclick="ir('login',this)"><span class="num">01</span> Login</button>
+  <button class="nav-btn" onclick="ir('registro',this)"><span class="num">02</span> Registro</button>
+
+  <h3>Cliente</h3>
+  <button class="nav-btn" onclick="ir('inicio',this)"><span class="num">03</span> Inicio / Catálogo</button>
+  <button class="nav-btn" onclick="ir('reserva1',this)"><span class="num">04</span> Reservar · Servicio</button>
+  <button class="nav-btn" onclick="ir('reserva2',this)"><span class="num">05</span> Reservar · Barbero</button>
+  <button class="nav-btn" onclick="ir('reserva3',this)"><span class="num">06</span> Reservar · Fecha y hora</button>
+  <button class="nav-btn" onclick="ir('pago',this)"><span class="num">07</span> Reservar · Pago</button>
+  <button class="nav-btn" onclick="ir('miscitas',this)"><span class="num">08</span> Mis Citas</button>
+
+  <h3>Barbero</h3>
+  <button class="nav-btn" onclick="ir('agenda',this)"><span class="num">09</span> Agenda del día</button>
+
+  <h3>Administrador</h3>
+  <button class="nav-btn" onclick="ir('dashboard',this)"><span class="num">10</span> Dashboard KPI</button>
+  <button class="nav-btn" onclick="ir('servicios',this)"><span class="num">11</span> Gestión de servicios</button>
+
+  <p class="nota"><b>Nota:</b> este prototipo es estático (datos de ejemplo). El producto final implementado corresponde a las 45 historias de usuario del documento <b>historias-de-usuario.md</b>.</p>
+</aside>
+
+<!-- ================= TELÉFONO ================= -->
+<main class="escenario">
+  <div class="telefono">
+
+    <!-- 01 · LOGIN -->
+    <section class="pantalla visible" id="login">
+      <div class="auth">
+        <div class="logo-grande">✂</div>
+        <h2>BARBERÍA ÉLITE</h2>
+        <p class="frase">Estilo clásico, experiencia moderna</p>
+        <label class="etiqueta">Correo electrónico</label>
+        <input class="input" type="email" placeholder="tu@correo.com">
+        <label class="etiqueta">Contraseña</label>
+        <input class="input" type="password" placeholder="••••••••">
+        <button class="btn" onclick="ir('inicio')">Iniciar sesión</button>
+        <p class="pie">¿No tienes cuenta? <b onclick="ir('registro')">Regístrate</b></p>
+        <p class="pie" style="font-size:11px;opacity:.6">Roles: cliente · barbero · administrador</p>
+      </div>
+    </section>
+
+    <!-- 02 · REGISTRO -->
+    <section class="pantalla" id="registro">
+      <div class="auth">
+        <div class="logo-grande">✂</div>
+        <h2>CREAR CUENTA</h2>
+        <p class="frase">Regístrate para reservar en segundos</p>
+        <label class="etiqueta">Nombre completo</label>
+        <input class="input" placeholder="Juan Pérez">
+        <label class="etiqueta">Correo electrónico</label>
+        <input class="input" type="email" placeholder="tu@correo.com">
+        <label class="etiqueta">Teléfono</label>
+        <input class="input" placeholder="300 000 0000">
+        <label class="etiqueta">Contraseña (mín. 6 caracteres)</label>
+        <input class="input" type="password" placeholder="••••••••">
+        <button class="btn" onclick="ir('inicio')">Registrarme</button>
+        <p class="pie">¿Ya tienes cuenta? <b onclick="ir('login')">Inicia sesión</b></p>
+      </div>
+    </section>
+
+    <!-- 03 · INICIO CLIENTE -->
+    <section class="pantalla" id="inicio">
+      <div class="topbar">
+        <div class="logo">Barbería Élite</div>
+        <div class="avatar">JP</div>
+      </div>
+      <div class="cuerpo">
+        <div class="card" style="background:linear-gradient(135deg,#292524,#1c1310); border-color:#78350f;">
+          <h4 style="font-size:19px;">Hola, Juan 👋</h4>
+          <p class="desc">Tu estilo merece expertos. Reserva tu próxima cita en menos de un minuto.</p>
+          <button class="btn mini" style="margin-top:12px;" onclick="ir('reserva1')">Reservar cita</button>
+        </div>
+
+        <h4 style="margin:6px 0 10px; font-size:15px;">Servicios</h4>
+        <div class="card fila"><div><h4>Corte Clásico</h4><p class="desc">Tijera + máquina, lavado incluido · 30 min</p></div><span class="precio">S/ 25.00</span></div>
+        <div class="card fila"><div><h4>Corte + Barba</h4><p class="desc">Corte perfilado y arreglo de barba · 45 min</p></div><span class="precio">S/ 40.00</span></div>
+        <div class="card fila"><div><h4>Afeitado Clásico</h4><p class="desc">Navaja y toalla caliente · 40 min</p></div><span class="precio">S/ 30.00</span></div>
+
+        <h4 style="margin:16px 0 10px; font-size:15px;">Nuestros barberos</h4>
+        <div class="card fila"><div class="fila"><div class="avatar">CM</div><div style="margin-left:10px;"><h4>Carlos Martínez</h4><p class="desc">Corte clásico · ⭐ 4.8</p></div></div><span class="badge b-rol">Ver</span></div>
+        <div class="card fila"><div class="fila"><div class="avatar">AG</div><div style="margin-left:10px;"><h4>Andrés Gómez</h4><p class="desc">Barba y diseños · ⭐ 4.9</p></div></div><span class="badge b-rol">Ver</span></div>
+
+        <h4 style="margin:16px 0 10px; font-size:15px;">Reseñas recientes</h4>
+        <div class="card"><div class="fila"><h4>Miguel R.</h4><span class="estrellas">★★★★★</span></div><p class="desc">"Excelente atención, el mejor corte que me han hecho."</p></div>
+        <div class="tabbar">
+          <a class="activo" onclick="ir('inicio')"><span class="ico">🏠</span>Inicio</a>
+          <a onclick="ir('reserva1')"><span class="ico">📅</span>Reservar</a>
+          <a onclick="ir('miscitas')"><span class="ico">✂</span>Mis citas</a>
+          <a onclick="ir('login')"><span class="ico">👤</span>Perfil</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 · RESERVA PASO 1 -->
+    <section class="pantalla" id="reserva1">
+      <div class="topbar"><div class="logo">Nueva reserva</div><span class="badge b-rol" onclick="ir('inicio')">✕</span></div>
+      <div class="cuerpo">
+        <div class="pasos"><i class="paso on"></i><i class="paso"></i><i class="paso"></i></div>
+        <h4 class="titulo-pantalla" style="font-size:18px;">1 · Elige un servicio</h4>
+        <p class="subtitulo">Toca una tarjeta para seleccionarlo</p>
+        <div class="card sel fila"><div><h4>Corte Clásico</h4><p class="desc">30 min</p></div><span class="precio">S/ 25.00</span></div>
+        <div class="card fila"><div><h4>Corte + Barba</h4><p class="desc">45 min</p></div><span class="precio">S/ 40.00</span></div>
+        <div class="card fila"><div><h4>Afeitado Clásico</h4><p class="desc">40 min</p></div><span class="precio">S/ 30.00</span></div>
+        <div class="card fila"><div><h4>Color / Tinte</h4><p class="desc">60 min</p></div><span class="precio">S/ 60.00</span></div>
+        <button class="btn" onclick="ir('reserva2')">Continuar →</button>
+        <div class="tabbar">
+          <a class="activo" onclick="ir('inicio')"><span class="ico">🏠</span>Inicio</a>
+          <a onclick="ir('reserva1')"><span class="ico">📅</span>Reservar</a>
+          <a onclick="ir('miscitas')"><span class="ico">✂</span>Mis citas</a>
+          <a onclick="ir('login')"><span class="ico">👤</span>Perfil</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 · RESERVA PASO 2 -->
+    <section class="pantalla" id="reserva2">
+      <div class="topbar"><div class="logo">Nueva reserva</div><span class="badge b-rol" onclick="ir('inicio')">✕</span></div>
+      <div class="cuerpo">
+        <div class="pasos"><i class="paso on"></i><i class="paso on"></i><i class="paso"></i></div>
+        <h4 class="titulo-pantalla" style="font-size:18px;">2 · Elige tu barbero</h4>
+        <p class="subtitulo">Corte Clásico · S/ 25.00 · 30 min</p>
+        <div class="card sel">
+          <div class="fila"><div class="fila"><div class="avatar">CM</div><div style="margin-left:10px;"><h4>Carlos Martínez</h4><p class="desc">Corte clásico</p></div></div><span class="badge b-rol">Elegido</span></div>
+        </div>
+        <div class="card">
+          <div class="fila"><div class="fila"><div class="avatar">AG</div><div style="margin-left:10px;"><h4>Andrés Gómez</h4><p class="desc">Barba y diseños</p></div></div></div>
+        </div>
+        <div class="grid2">
+          <button class="btn secundario" onclick="ir('reserva1')">← Atrás</button>
+          <button class="btn" onclick="ir('reserva3')">Continuar →</button>
+        </div>
+        <div class="tabbar">
+          <a class="activo" onclick="ir('inicio')"><span class="ico">🏠</span>Inicio</a>
+          <a onclick="ir('reserva1')"><span class="ico">📅</span>Reservar</a>
+          <a onclick="ir('miscitas')"><span class="ico">✂</span>Mis citas</a>
+          <a onclick="ir('login')"><span class="ico">👤</span>Perfil</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06 · RESERVA PASO 3 -->
+    <section class="pantalla" id="reserva3">
+      <div class="topbar"><div class="logo">Nueva reserva</div><span class="badge b-rol" onclick="ir('inicio')">✕</span></div>
+      <div class="cuerpo">
+        <div class="pasos"><i class="paso on"></i><i class="paso on"></i><i class="paso on"></i></div>
+        <h4 class="titulo-pantalla" style="font-size:18px;">3 · Fecha y hora</h4>
+        <p class="subtitulo">Carlos Martínez · Corte Clásico</p>
+        <label class="etiqueta">Fecha</label>
+        <input class="input" type="date" value="2026-10-20">
+        <label class="etiqueta">Horas disponibles</label>
+        <div class="chips" style="margin-bottom:16px;">
+          <span class="chip">09:00</span>
+          <span class="chip">09:30</span>
+          <span class="chip off">10:00</span>
+          <span class="chip sel">10:30</span>
+          <span class="chip">11:00</span>
+          <span class="chip">11:30</span>
+          <span class="chip off">14:00</span>
+          <span class="chip">14:30</span>
+          <span class="chip">15:00</span>
+        </div>
+        <label class="etiqueta">Notas para el barbero (opcional)</label>
+        <input class="input" placeholder="Ej. con máquina 1 a los lados">
+        <div class="card" style="border-style:dashed;">
+          <div class="fila"><span class="desc">Corte Clásico · Carlos Martínez</span><span class="precio">S/ 25.00</span></div>
+          <p class="desc" style="margin-top:4px;">Martes 20 oct 2026 · 10:30</p>
+        </div>
+        <div class="grid2">
+          <button class="btn secundario" onclick="ir('reserva2')">← Atrás</button>
+          <button class="btn" onclick="ir('pago')">Confirmar → Pagar</button>
+        </div>
+        <div class="tabbar">
+          <a class="activo" onclick="ir('inicio')"><span class="ico">🏠</span>Inicio</a>
+          <a onclick="ir('reserva1')"><span class="ico">📅</span>Reservar</a>
+          <a onclick="ir('miscitas')"><span class="ico">✂</span>Mis citas</a>
+          <a onclick="ir('login')"><span class="ico">👤</span>Perfil</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 07 · PAGO (pasarela demo, soles) -->
+    <section class="pantalla" id="pago">
+      <div class="topbar"><div class="logo">Pago seguro</div><span class="badge b-rol" onclick="ir('inicio')">✕</span></div>
+      <div class="cuerpo">
+        <div class="pasos"><i class="paso on"></i><i class="paso on"></i><i class="paso on"></i><i class="paso on"></i></div>
+        <h4 class="titulo-pantalla" style="font-size:18px;">4 · Pago</h4>
+        <p class="subtitulo">Corte Clásico · Martes 20 oct · 10:30</p>
+        <div class="card fila" style="background:rgba(245,158,11,.08);">
+          <span class="desc">Total a pagar (PEN)</span><span class="precio" style="font-size:20px;">S/ 25.00</span>
+        </div>
+        <label class="etiqueta">Método de pago</label>
+        <div class="chips" style="margin-bottom:14px;">
+          <span class="chip sel">📱 Yape</span>
+          <span class="chip">Plin</span>
+          <span class="chip">Efectivo</span>
+        </div>
+        <div class="card fila" style="background:rgba(95,37,159,.15);">
+          <span class="desc">Paga con Yape al número</span><span style="font-family:monospace;">+51 987 654 321</span>
+        </div>
+        <label class="etiqueta">Código de operación Yape (6 dígitos)</label>
+        <input class="input" value="123456" maxlength="6">
+        <p class="desc" style="margin:8px 0 14px;">Al aprobar el pago se emite el comprobante COMP-XXXXXX · anti doble cobro: una cita no se cobra dos veces y cada código se acepta una sola vez.</p>
+        <button class="btn" onclick="ir('miscitas')">🔒 Pagar S/ 25.00</button>
+        <button class="btn secundario" style="margin-top:8px;" onclick="ir('miscitas')">Pagar después</button>
+        <p class="desc" style="text-align:center; margin-top:10px;">Transacción protegida · anti doble cobro · PagoSeguro PE · Soles (PEN)</p>
+        <div class="tabbar">
+          <a class="activo" onclick="ir('inicio')"><span class="ico">🏠</span>Inicio</a>
+          <a onclick="ir('reserva1')"><span class="ico">📅</span>Reservar</a>
+          <a onclick="ir('miscitas')"><span class="ico">✂</span>Mis citas</a>
+          <a onclick="ir('login')"><span class="ico">👤</span>Perfil</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 08 · MIS CITAS -->
+    <section class="pantalla" id="miscitas">
+      <div class="topbar">
+        <div class="logo">Mis citas</div>
+        <div class="avatar">JP</div>
+      </div>
+      <div class="cuerpo">
+        <div class="card">
+          <div class="fila"><h4>Corte Clásico</h4><span class="badge b-pendiente">PENDIENTE</span></div>
+          <p class="desc">Carlos Martínez · Vie 23 oct · 15:00</p>
+          <div style="display:flex; gap:8px; margin-top:12px;">
+            <button class="btn mini" style="flex:1;" onclick="ir('pago')">💳 Pagar ahora</button>
+            <button class="btn mini peligro" style="flex:1;">Cancelar cita</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="fila"><h4>Corte + Barba</h4><span class="badge b-confirmada">CONFIRMADA</span></div>
+          <p class="desc">Andrés Gómez · Mié 21 oct · 10:30</p>
+          <div style="display:flex; gap:8px; margin-top:12px;">
+            <button class="btn mini peligro" style="flex:1;">Cancelar cita</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="fila"><h4>Afeitado Clásico</h4><span class="badge b-completada">COMPLETADA</span></div>
+          <p class="desc">Carlos Martínez · Sáb 17 oct · 09:00</p>
+          <button class="btn mini" style="margin-top:12px;" onclick="document.getElementById('modal-resena').classList.add('abierto')">⭐ Valorar servicio</button>
+        </div>
+        <div class="card" style="opacity:.6;">
+          <div class="fila"><h4>Color / Tinte</h4><span class="badge b-cancelada">CANCELADA</span></div>
+          <p class="desc">Andrés Gómez · Lun 12 oct · 16:00</p>
+        </div>
+        <div class="tabbar">
+          <a onclick="ir('inicio')"><span class="ico">🏠</span>Inicio</a>
+          <a onclick="ir('reserva1')"><span class="ico">📅</span>Reservar</a>
+          <a class="activo" onclick="ir('miscitas')"><span class="ico">✂</span>Mis citas</a>
+          <a onclick="ir('login')"><span class="ico">👤</span>Perfil</a>
+        </div>
+      </div>
+      <!-- Modal reseña -->
+      <div class="modal-fondo" id="modal-resena">
+        <div class="modal">
+          <h4 style="font-size:17px; margin-bottom:4px;">Valorar servicio</h4>
+          <p class="subtitulo" style="margin-bottom:12px;">Afeitado Clásico · Carlos Martínez</p>
+          <p style="font-size:30px; color:#fbbf24; text-align:center; letter-spacing:6px; margin-bottom:16px;">★★★★<span style="color:#292524;">★</span></p>
+          <label class="etiqueta">Comentario</label>
+          <input class="input" placeholder="Cuéntanos tu experiencia...">
+          <button class="btn" onclick="document.getElementById('modal-resena').classList.remove('abierto')">Enviar reseña</button>
+          <button class="btn secundario" style="margin-top:8px;" onclick="document.getElementById('modal-resena').classList.remove('abierto')">Cerrar</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 08 · AGENDA BARBERO -->
+    <section class="pantalla" id="agenda">
+      <div class="topbar">
+        <div class="logo">Mi agenda</div>
+        <div class="avatar">CM</div>
+      </div>
+      <div class="cuerpo">
+        <p class="subtitulo">Carlos Martínez · semanal</p>
+        <div class="dia-grupo">
+          <h5>Hoy · Vie 23 oct</h5>
+          <div class="card">
+            <div class="fila"><div><h4>Juan Pérez</h4><p class="desc">Corte Clásico · 15:00</p></div><span class="badge b-pendiente">PENDIENTE</span></div>
+            <div style="display:flex; gap:8px; margin-top:12px;">
+              <button class="btn mini" style="flex:1;">✓ Confirmar</button>
+              <button class="btn mini peligro" style="flex:1;">Cancelar</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="fila"><div><h4>Miguel Rojas</h4><p class="desc">Corte + Barba · 16:00</p></div><span class="badge b-confirmada">CONFIRMADA</span></div>
+            <div style="display:flex; gap:8px; margin-top:12px;">
+              <button class="btn mini" style="flex:1; background:#14532d; color:#86efac;">✓ Completar</button>
+              <button class="btn mini peligro" style="flex:1;">Cancelar</button>
+            </div>
+          </div>
+        </div>
+        <div class="dia-grupo">
+          <h5>Sábado 24 oct</h5>
+          <div class="card fila"><div><h4>Luis Torres</h4><p class="desc">Afeitado · 09:00</p></div><span class="badge b-pendiente">PENDIENTE</span></div>
+          <div class="card fila"><div><h4>Pedro Sánchez</h4><p class="desc">Corte Clásico · 10:00</p></div><span class="badge b-completada">COMPLETADA</span></div>
+        </div>
+        <div class="tabbar">
+          <a class="activo" onclick="ir('agenda')"><span class="ico">📅</span>Agenda</a>
+          <a onclick="ir('login')"><span class="ico">👤</span>Perfil</a>
+          <a onclick="ir('login')"><span class="ico">🚪</span>Salir</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 09 · DASHBOARD ADMIN -->
+    <section class="pantalla" id="dashboard">
+      <div class="topbar">
+        <div class="logo">Panel admin</div>
+        <div class="avatar">AD</div>
+      </div>
+      <div class="cuerpo">
+        <p class="subtitulo">Resumen de la operación</p>
+        <div class="stats">
+          <div class="stat"><span class="ico">📅</span><div class="val">12</div><div class="lbl">Citas hoy</div></div>
+          <div class="stat"><span class="ico">⏳</span><div class="val">5</div><div class="lbl">Pendientes</div></div>
+          <div class="stat"><span class="ico">👥</span><div class="val">148</div><div class="lbl">Clientes</div></div>
+          <div class="stat"><span class="ico">💰</span><div class="val">S/ 14.6K</div><div class="lbl">Ingresos del mes</div></div>
+        </div>
+        <div class="card">
+          <h4 style="font-size:13px;">Citas por estado</h4>
+          <div class="fila" style="margin-top:8px;"><span class="desc">Completadas (32)</span><span class="desc">64%</span></div>
+          <div class="barra"><i style="width:64%;"></i></div>
+          <div class="fila" style="margin-top:6px;"><span class="desc">Pendientes (10)</span><span class="desc">20%</span></div>
+          <div class="barra"><i style="width:20%; background:#78350f;"></i></div>
+          <div class="fila" style="margin-top:6px;"><span class="desc">Confirmadas (5)</span><span class="desc">10%</span></div>
+          <div class="barra"><i style="width:10%; background:#1e3a5f;"></i></div>
+          <div class="fila" style="margin-top:6px;"><span class="desc">Canceladas (3)</span><span class="desc">6%</span></div>
+          <div class="barra"><i style="width:6%; background:#7f1d1d;"></i></div>
+        </div>
+        <h4 style="margin:6px 0 10px; font-size:14px;">Próximas citas de hoy</h4>
+        <div class="card">
+          <table class="tabla">
+            <tr><th>Hora</th><th>Cliente</th><th>Servicio</th><th>Estado</th></tr>
+            <tr><td>15:00</td><td>J. Pérez</td><td>Corte</td><td><span class="badge b-pendiente">PEND</span></td></tr>
+            <tr><td>15:30</td><td>M. Rojas</td><td>Barba</td><td><span class="badge b-confirmada">CONF</span></td></tr>
+            <tr><td>16:00</td><td>L. Torres</td><td>Corte</td><td><span class="badge b-pendiente">PEND</span></td></tr>
+          </table>
+        </div>
+        <button class="btn secundario" style="margin-top:6px;" onclick="ir('servicios')">Gestionar servicios →</button>
+        <div class="tabbar">
+          <a class="activo" onclick="ir('dashboard')"><span class="ico">📊</span>Panel</a>
+          <a onclick="ir('servicios')"><span class="ico">✂</span>Servicios</a>
+          <a onclick="ir('login')"><span class="ico">🚪</span>Salir</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 · ADMIN SERVICIOS -->
+    <section class="pantalla" id="servicios">
+      <div class="topbar">
+        <div class="logo">Servicios</div>
+        <div class="avatar">AD</div>
+      </div>
+      <div class="cuerpo">
+        <button class="btn" style="margin-bottom:14px;" onclick="document.getElementById('modal-servicio').classList.add('abierto')">+ Nuevo servicio</button>
+        <div class="card fila"><div><h4>Corte Clásico</h4><p class="desc">S/ 25.00 · 30 min</p></div><div><span class="badge b-completada">ACTIVO</span> <span class="badge b-rol">✏️</span> <span class="badge b-cancelada">🗑</span></div></div>
+        <div class="card fila"><div><h4>Corte + Barba</h4><p class="desc">S/ 40.00 · 45 min</p></div><div><span class="badge b-completada">ACTIVO</span> <span class="badge b-rol">✏️</span> <span class="badge b-cancelada">🗑</span></div></div>
+        <div class="card fila"><div><h4>Afeitado Clásico</h4><p class="desc">S/ 30.00 · 40 min</p></div><div><span class="badge b-completada">ACTIVO</span> <span class="badge b-rol">✏️</span> <span class="badge b-cancelada">🗑</span></div></div>
+        <div class="card fila" style="opacity:.55;"><div><h4>Mascarilla Facial</h4><p class="desc">S/ 35.00 · 30 min</p></div><div><span class="badge b-cancelada">INACTIVO</span> <span class="badge b-rol">✏️</span> <span class="badge b-cancelada">🗑</span></div></div>
+        <div class="tabbar">
+          <a onclick="ir('dashboard')"><span class="ico">📊</span>Panel</a>
+          <a class="activo" onclick="ir('servicios')"><span class="ico">✂</span>Servicios</a>
+          <a onclick="ir('login')"><span class="ico">🚪</span>Salir</a>
+        </div>
+      </div>
+      <!-- Modal servicio -->
+      <div class="modal-fondo" id="modal-servicio">
+        <div class="modal">
+          <h4 style="font-size:17px; margin-bottom:14px;">Nuevo servicio</h4>
+          <label class="etiqueta">Nombre</label>
+          <input class="input" placeholder="Ej. Corte Premium">
+          <label class="etiqueta">Descripción</label>
+          <input class="input" placeholder="Descripción breve">
+          <div class="grid2">
+            <div><label class="etiqueta">Precio (COP)</label><input class="input" type="number" placeholder="25000"></div>
+            <div><label class="etiqueta">Duración (min)</label><input class="input" type="number" placeholder="30"></div>
+          </div>
+          <button class="btn" onclick="document.getElementById('modal-servicio').classList.remove('abierto')">Guardar</button>
+          <button class="btn secundario" style="margin-top:8px;" onclick="document.getElementById('modal-servicio').classList.remove('abierto')">Cancelar</button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script>
+  // Navegación entre pantallas del prototipo
+  function ir(id, btn) {
+    document.querySelectorAll('.pantalla').forEach(p => p.classList.remove('visible'));
+    document.getElementById(id).classList.add('visible');
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('activo'));
+    if (btn) btn.classList.add('activo');
+    document.querySelector('.telefono .pantalla.visible').scrollTop = 0;
+  }
+  // Selección visual en chips de horario
+  document.querySelectorAll('.chips .chip:not(.off)').forEach(c => {
+    c.addEventListener('click', () => {
+      c.parentElement.querySelectorAll('.chip').forEach(x => x.classList.remove('sel'));
+      c.classList.add('sel');
+    });
+  });
+</script>
+</body>
+</html>
